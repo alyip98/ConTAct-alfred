@@ -9,24 +9,28 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+
+import com.google.gson.GsonBuilder;
 
 /**
  * Handles the sending of the mail
  */
 public class OutlookRequest {
+    private static String accessToken = "";
 
-    private String emailAdd;
+    private List<String> emailAdd;
     private String subject;
     private String body;
 
-    public OutlookRequest(String emailAdd, String subject, String body) {
+    public OutlookRequest(List<String> emailAdd, String subject, String body) {
         this.emailAdd = emailAdd;
         this.subject = subject;
         this.body = body;
     }
 
-    private String getEmailAdd() {
+    private List<String> getEmailAdd() {
         return emailAdd;
     }
 
@@ -42,7 +46,39 @@ public class OutlookRequest {
      * Connecting to outlook with appropriate tokens to send email
      */
     public static void sendMail(OutlookRequest outlookRequest) throws Exception {
+        if (accessToken.equals("")) {
+            acquireAccessToken();
+        }
+        assert(!accessToken.equals(""));
 
+        String subject = outlookRequest.getSubject();
+        String body = outlookRequest.getBody();
+        List<String> emailAdd = outlookRequest.getEmailAdd();
+        Iterator<String> iterator = emailAdd.iterator();
+        StringBuilder addresses = new StringBuilder();
+        while (iterator.hasNext()) {
+            addresses.append(String.format("{\"EmailAddress\":{\"Address\":\"%s\"}},", iterator.next()));
+        }
+
+
+        String emailBody = "{\"Message\":{\"Subject\":\""
+                + subject + "\",\"Body\":{\"ContentType\":\"Text\",\"Content\":\""
+                + body + "\"},\"ToRecipients\":["
+                + addresses.substring(0, addresses.length() - 1) + "]},\"SaveToSentItems\":\"true\"}";
+
+        HttpURLConnection emailRequest = Request.sendMail(accessToken, ApplicationDetails.MAILENDPOINT,
+                "POST", emailBody);
+        emailRequest.connect();
+        int responseCode = emailRequest.getResponseCode();
+        String responseMsg = emailRequest.getResponseMessage();
+        if (responseCode >= 400 && responseCode <= 499) {
+            throw new Exception(responseMsg + " :: " + responseCode);
+
+        }
+
+    }
+
+    private static void acquireAccessToken() {
         try {
             // Opens microsoft authentication page in a browser tab
             Desktop.getDesktop().browse(new URI(ApplicationDetails.AUTHURL));
@@ -83,27 +119,7 @@ public class OutlookRequest {
                     break;
                 }
             }
-            String token = split[i + 1].substring(1, split[i + 1].length() - 2);
-
-            String subject = outlookRequest.getSubject();
-            String body = outlookRequest.getBody();
-            String emailAdd = outlookRequest.getEmailAdd();
-
-            String emailBody = "{\"Message\":{\"Subject\":\""
-                    + subject + "\",\"Body\":{\"ContentType\":\"Text\",\"Content\":\""
-                    + body + "\"},\"ToRecipients\":[{\"EmailAddress\":{\"Address\":\""
-                    + emailAdd + "\"}}]},\"SaveToSentItems\":\"true\"}";
-
-
-            HttpURLConnection emailRequest = Request.sendMail(token, ApplicationDetails.MAILENDPOINT,
-                    "POST", emailBody);
-            emailRequest.connect();
-            int responseCode = emailRequest.getResponseCode();
-            String responseMsg = emailRequest.getResponseMessage();
-            if (responseCode >= 400 && responseCode <= 499) {
-                throw new Exception(responseMsg + " :: " + responseCode);
-
-            }
+            accessToken = split[i + 1].substring(1, split[i + 1].length() - 2);
         } catch (Exception e) {
             e.printStackTrace();
         }

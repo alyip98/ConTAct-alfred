@@ -34,8 +34,9 @@ public class EmailCommand extends Command {
             + PREFIX_BODY + "Tutorial this week is on tuesday. ";
 
     public static final String MESSAGE_SENT_SUCCESS = "Email sent to: %1$s";
+    public static final String MESSAGE_SENT_FAILURE = "Email not delivered, received response: %s";
 
-    private final EmailDraft emailDraft;
+    protected final EmailDraft emailDraft;
 
     /**
      * Creates an EmailCommand to send the specified {@code EmailDraft}
@@ -56,7 +57,7 @@ public class EmailCommand extends Command {
 
         Student studentToEmail = lastShownList.get(targetIndex.getZeroBased());
         Email addressToEmail = studentToEmail.getEmail();
-        String emailAdd = addressToEmail.toString();
+        List<String> emailAdd = List.of(addressToEmail.toString());
         String subject = emailDraft.getSubject().toString();
 
         String body = emailDraft.getBody().toString();
@@ -64,7 +65,7 @@ public class EmailCommand extends Command {
         try {
             OutlookRequest.sendMail(outlookRequest);
         } catch (Exception e) {
-            e.printStackTrace();
+            return new CommandResult(String.format(MESSAGE_SENT_FAILURE, e.getMessage()));
         }
 
         return new CommandResult(String.format(MESSAGE_SENT_SUCCESS, addressToEmail));

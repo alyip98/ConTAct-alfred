@@ -2,12 +2,14 @@ package seedu.address.logic.parser;
 
 import static seedu.address.commons.core.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_BODY;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_GROUP;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_SUBJECT;
 
 import java.util.stream.Stream;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.logic.commands.EmailCommand;
+import seedu.address.logic.commands.group.GroupEmailCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.email.Body;
 import seedu.address.model.email.EmailDraft;
@@ -26,16 +28,21 @@ public class EmailCommandParser implements Parser<EmailCommand> {
      */
     public EmailCommand parse(String args) throws ParseException {
         ArgumentMultimap argMultimap =
-                ArgumentTokenizer.tokenize(args, PREFIX_SUBJECT, PREFIX_BODY);
+                ArgumentTokenizer.tokenize(args, PREFIX_SUBJECT, PREFIX_BODY, PREFIX_GROUP);
 
         if (!arePrefixesPresent(argMultimap, PREFIX_SUBJECT, PREFIX_BODY)
-                || argMultimap.getPreamble().isEmpty()) {
+                || (argMultimap.getPreamble().isEmpty() && !arePrefixesPresent(argMultimap, PREFIX_GROUP))) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, EmailCommand.MESSAGE_USAGE));
         }
 
-        Index index = ParserUtil.parseIndex(argMultimap.getPreamble());
         Subject subject = ParserUtil.parseSubject(argMultimap.getValue(PREFIX_SUBJECT).get());
         Body body = ParserUtil.parseBody(argMultimap.getValue(PREFIX_BODY).get());
+
+        if (arePrefixesPresent(argMultimap, PREFIX_GROUP)) {
+            String groupName = argMultimap.getValue(PREFIX_GROUP).get();
+            return new GroupEmailCommand(groupName, subject.toString(), body.toString());
+        }
+        Index index = ParserUtil.parseIndex(argMultimap.getPreamble());
 
         EmailDraft emailDraft = new EmailDraft(index, subject, body);
 
